@@ -32,7 +32,8 @@ Imports:
     checkmate,
     rmarkdown,
     R.utils,
-    SummarizedExperiment
+    SummarizedExperiment,
+    tidyselect
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
