@@ -94,7 +94,9 @@ produce_info_tables <-
                 metadata = meta_complete,
                 volcano_infos = volcano,
                 pca_infos = pca_infos,
-                report_infos = report_infos
+                report_infos = report_infos,
+                de_infos = de,
+                design_infos = design
             )
         )
     }
