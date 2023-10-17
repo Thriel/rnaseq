@@ -9,7 +9,9 @@ produce_info_tables(
   design_infos,
   metadata_infos,
   volcano_fc_threshold = c(1.5, 3),
-  outdir = NULL
+  outdir = NULL,
+  header_file = "header.qmd",
+  r_objects = "r_objects"
 )
 }
 \arguments{
@@ -26,6 +28,13 @@ in volcano plots. Default: \code{c(1.5, 3)}.}
 \item{outdir}{The directory where to save produced tables in csv format. The
 files will be saved as <outdir>/<name>.csv. If \code{NULL}, the results
 won't be saved as csv. Default: \code{NULL}.}
+
+\item{header_file}{Path to the header file that should be added at the top
+of the report.}
+
+\item{r_objects}{A \code{character} string corresponding to the directory
+containing the rds files that will be used to create the report.
+Default: "r_objects".}
 }
 \value{
 Invisibly returns a named \code{list} of all the tables produced.
