@@ -43,7 +43,6 @@ Invisibly returns a named \code{list} of all the tables produced.
 Produce tables required for batch analysis from minimal information
 }
 \examples{
-\dontrun{
-}
+\dontrun{}
 
 }

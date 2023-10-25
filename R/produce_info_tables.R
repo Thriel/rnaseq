@@ -18,9 +18,7 @@
 #' @return Invisibly returns a named \code{list} of all the tables produced.
 #'
 #' @examples
-#' \dontrun{
-
-#' }
+#' \dontrun{}
 #'
 #' @importFrom readr read_csv
 #' @importFrom readr write_csv
@@ -54,10 +52,12 @@ produce_info_tables <-
         de <- read_csv(de_infos, col_types = cols(.default = "c"))
         stopifnot(c("id_de", "group", "contrast_1", "contrast_2") %in% colnames(de))
 
-        meta <- read_csv(metadata_infos, col_types = cols(.default = "c"))
+        meta <-
+            read_csv(metadata_infos, col_types = cols(.default = "c"))
         stopifnot("sample" %in% colnames(meta))
 
-        design <- read_csv(design_infos, col_types = cols(.default = "c"))
+        design <-
+            read_csv(design_infos, col_types = cols(.default = "c"))
         stopifnot(c("sample", "group") %in% colnames(design))
 
         # 1 Prepare metadata file
@@ -100,6 +100,219 @@ produce_info_tables <-
             )
         )
     }
+
+#' Parse and check a dataframe, a delimited text file or an Excel file
+#'
+#' This function is meant to check a table's format against custom
+#' specifications and change the types of its columns as desired. A mismatch
+#' between expectations and the input table will result in an error.
+#'
+#' @param path_or_table Either a \code{data.frame} or a single string giving
+#' the path to an existing delimited-text or Excel file.
+#' @param delim Either \code{NULL} or a single string to use as a text
+#' delimiter. Ignored if \code{path_or_table} is not a path to a text file.
+#' If \code{NULL}, the delimiter will be guessed from the contents of the file.
+#' Default: \code{NULL}
+#' @param sheet Either \code{NULL}, a single string or a single integer, giving
+#' the name or number of the sheet to read from an Excel file. Ignored if
+#' \code{path_or_table} is not a path to an Excel file, or if the sheet is
+#' specified using the \code{range} argument. If \code{NULL}, the first sheet is
+#' read. Default: \code{NULL}
+#' @param range Either \code{NULL} or a single string specifying the rectangle
+#' of cells to read in an Excel file. Ignored if \code{path_or_table} is not a
+#' path to an Excel file. The rectangle can be specified in any of two formats,
+#' "D3:G5" and "R3C4:R5C7" (both examples specify rows 3 to 5 and
+#' columns 4 to 7). The name of the sheet to read, e.g. "mysheet", can be
+#' specified with "mysheet!D3:G5" or "mysheet!R3C4:R5C7". A sheet name specified
+#' in this way overrides the \code{sheet} argument. If \code{range} is
+#' \code{NULL}, the rectangle is guessed from the contents of the file.
+#' Default: \code{NULL}
+#' @param required_col_names Either \code{NULL} or a character vector of column
+#' names that should appear in the table. The function will produce an error if
+#' any of these column names is missing from the table. Default: \code{NULL}
+#' @param required_col_patterns Either \code{NULL} or a character vector. If it
+#' is a named vector, all its names should appear as column names in the table.
+#' If it has no names, it should be the same length as \code{required_col_names}
+#' and its elements are then assumed to correspond to the elements of
+#' \code{required_col_names} in the same order. The elements of
+#' \code{required_col_patterns} should be valid (ICU) regular expressions. If an
+#' input column has a corresponding pattern, every entry in this column must
+#' contain a match of the pattern.
+#' Default: \code{NULL}
+#' @param required_col_types A \code{cols()} specification giving the types to
+#' which input columns should be converted, e.g.:
+#' \code{cols(age = "i", weight = "d", .default = "c")}. Every column mentioned
+#' in the specification should appear in the input table, and its entries should
+#' be convertible to the specified type. If the specification omits a column and
+#' has no \code{.default} argument, the type of the column will be guessed from
+#' its contents. Default: \code{cols()}
+#'
+#'
+#' @return A tibble resulting from the conversion of the input table using
+#' the \code{required_col_types} specification.
+#'
+#' @examples
+#' library("tibble")
+#' library("readr")
+#' library("magrittr")
+#' input <- tibble(x = c("A_B", "C_D"), y = c("1", "2"))
+#' expected <- tibble(x = c("A_B", "C_D"), y = as.integer(c(1, 2)))
+#' output <-
+#'     input %>%
+#'     parse_table(
+#'         required_col_names = c("x", "y"),
+#'         required_col_patterns = c(x = "[A-Z]_[A-Z]"),
+#'         required_col_types = cols(y = "i", .default = "c")
+#'     )
+#' stopifnot(identical(output, expected))
+#'
+#' @importFrom readr cols
+#' @importFrom readr read_delim
+#' @importFrom readr type_convert
+#' @importFrom dplyr pull
+#' @importFrom stringr str_detect
+#' @importFrom tibble as_tibble
+#' @importFrom tibble tibble
+#' @importFrom readxl excel_format
+#' @importFrom readxl read_excel
+#'
+#' @export
+parse_table <- function(path_or_table,
+                        delim = NULL,
+                        sheet = NULL,
+                        range = NULL,
+                        required_col_names = NULL,
+                        required_col_patterns = NULL,
+                        required_col_types = cols()) {
+    # Check required_col_names
+    if (!class(required_col_names) %in% c("NULL", "character")) {
+        stop("required_col_names must be a character vector.")
+    }
+
+    # Check required_col_patterns
+    if (is.null(required_col_patterns)) {
+        patterns <- NULL
+    } else {
+        if (!is.character(required_col_patterns)) {
+            stop("required_col_patterns must be a character vector.")
+        }
+        if (is.null(names(required_col_patterns))) {
+            if (length(required_col_patterns) != length(required_col_names)) {
+                stop(
+                    paste0(
+                        "If required_col_patterns is not a named vector, ",
+                        "it must have the same length as required_col_names"
+                    )
+                )
+            }
+            patterns <-
+                setNames(required_col_patterns, required_col_names)
+        } else {
+            patterns <- required_col_patterns
+        }
+    }
+
+    # Check required_col_types
+    if (!is.null(required_col_types)) {
+        if (!is(required_col_types, "col_spec")) {
+            stop("required_col_types must be a cols() specification.")
+        }
+    }
+
+    # If needed, create tibble from delimited text file or Excel file
+    if (is(path_or_table, "data.frame")) {
+        table <-
+            as_tibble(path_or_table) %>%
+            mutate(across(everything(), as.character))
+    } else if (is.character(path_or_table) &
+        length(path_or_table) == 1) {
+        path <- path_or_table
+
+        if (!file.exists(path)) {
+            stop(paste0(
+                "No file at path ",
+                path,
+                " from current directory ",
+                getwd()
+            ))
+        }
+
+        if (is.na(excel_format(path))) {
+            table <- read_delim(path, delim, col_types = cols(.default = "c"))
+        } else {
+            table <- read_excel(path, sheet, range, col_types = "text")
+        }
+    } else {
+        stop("path_or_table must be a single string or a dataframe.")
+    }
+
+    all_col_names <-
+        unique(c(
+            required_col_names,
+            names(patterns),
+            names(required_col_types$cols)
+        ))
+
+    missing_col_names <- setdiff(all_col_names, colnames(table))
+
+    if (length(missing_col_names) > 0) {
+        stop(
+            paste0(
+                "The following required column names are missing from the table: ",
+                paste(missing_col_names, collapse = ", ")
+            )
+        )
+    }
+
+    # Check that table entries match required patterns
+    for (col_name in names(patterns)) {
+        values <- table %>% pull(col_name)
+        pattern <- patterns[col_name]
+        matches <- values %>% str_detect(pattern)
+        bad_values <- values[!matches]
+        if (length(bad_values) > 0) {
+            stop(
+                paste0(
+                    "Some values in column ",
+                    col_name,
+                    " (e.g. ",
+                    paste(head(bad_values, 3), collapse = ", "),
+                    ") do not match pattern \"",
+                    pattern,
+                    "\""
+                )
+            )
+        }
+    }
+
+    # Convert columns to required types
+    for (col_name in names(table)) {
+        error_func <- function(e) {
+            x <- tibble()
+            x[[col_name]] <- character(0)
+            expected_type <- class(
+                type_convert(x, required_col_types)[[col_name]]
+            )
+            stop(paste0(
+                "Could not convert column ",
+                col_name,
+                " to type ",
+                expected_type,
+                ":\n\t",
+                e
+            ))
+        }
+        tryCatch(
+            table[, col_name] <-
+                table[, col_name] %>%
+                type_convert(required_col_types),
+            error = error_func,
+            warning = error_func
+        )
+    }
+
+    return(table)
+}
 
 prepare_metadata_mcols <- function(current_id_de, de, design) {
     print(current_id_de)
