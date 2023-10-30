@@ -2,73 +2,47 @@
 % Please edit documentation in R/produce_info_tables.R
 \name{parse_table}
 \alias{parse_table}
-\title{Parse and check a dataframe, a delimited text file or an Excel file}
+\title{Parse and check a dataframe}
 \usage{
 parse_table(
-  path_or_table,
-  delim = NULL,
-  sheet = NULL,
-  range = NULL,
-  required_col_names = NULL,
-  required_col_patterns = NULL,
-  required_col_types = cols()
+  df,
+  required_names = NULL,
+  required_patterns = NULL,
+  required_types = cols()
 )
 }
 \arguments{
-\item{path_or_table}{Either a \code{data.frame} or a single string giving
-the path to an existing delimited-text or Excel file.}
+\item{df}{A \code{data.frame}.}
 
-\item{delim}{Either \code{NULL} or a single string to use as a text
-delimiter. Ignored if \code{path_or_table} is not a path to a text file.
-If \code{NULL}, the delimiter will be guessed from the contents of the file.
-Default: \code{NULL}}
-
-\item{sheet}{Either \code{NULL}, a single string or a single integer, giving
-the name or number of the sheet to read from an Excel file. Ignored if
-\code{path_or_table} is not a path to an Excel file, or if the sheet is
-specified using the \code{range} argument. If \code{NULL}, the first sheet is
-read. Default: \code{NULL}}
-
-\item{range}{Either \code{NULL} or a single string specifying the rectangle
-of cells to read in an Excel file. Ignored if \code{path_or_table} is not a
-path to an Excel file. The rectangle can be specified in any of two formats,
-"D3:G5" and "R3C4:R5C7" (both examples specify rows 3 to 5 and
-columns 4 to 7). The name of the sheet to read, e.g. "mysheet", can be
-specified with "mysheet!D3:G5" or "mysheet!R3C4:R5C7". A sheet name specified
-in this way overrides the \code{sheet} argument. If \code{range} is
-\code{NULL}, the rectangle is guessed from the contents of the file.
-Default: \code{NULL}}
-
-\item{required_col_names}{Either \code{NULL} or a character vector of column
+\item{required_names}{Either \code{NULL} or a character vector of column
 names that should appear in the table. The function will produce an error if
 any of these column names is missing from the table. Default: \code{NULL}}
 
-\item{required_col_patterns}{Either \code{NULL} or a character vector. If it
-is a named vector, all its names should appear as column names in the table.
-If it has no names, it should be the same length as \code{required_col_names}
-and its elements are then assumed to correspond to the elements of
-\code{required_col_names} in the same order. The elements of
-\code{required_col_patterns} should be valid (ICU) regular expressions. If an
-input column has a corresponding pattern, every entry in this column must
-contain a match of the pattern.
+\item{required_patterns}{Either \code{NULL} or a character vector. If it
+is a named vector, its names will be interpreted as column names.
+If it has no names, it should be the same length as \code{required_names},
+which will be used as a vector of corresponding column names. The elements of
+\code{required_patterns} should be valid (ICU) regular expressions. If an
+input column has a corresponding pattern, every entry in the column must
+contain a match of that pattern.
 Default: \code{NULL}}
 
-\item{required_col_types}{A \code{cols()} specification giving the types to
+\item{required_types}{A \code{cols()} specification giving the types to
 which input columns should be converted, e.g.:
-\code{cols(age = "i", weight = "d", .default = "c")}. Every column mentioned
-in the specification should appear in the input table, and its entries should
-be convertible to the specified type. If the specification omits a column and
-has no \code{.default} argument, the type of the column will be guessed from
-its contents. Default: \code{cols()}}
+\code{cols(age = "i", weight = "d", .default = "c")}. Each input column
+covered by the specification (i.e. all columns if \code{.default} is set)
+should be convertible to the specified type. Input columns not covered by the
+specification will be converted to types guessed from their contents.
+Default: \code{cols()}}
 }
 \value{
-A tibble resulting from the conversion of the input table using
-the \code{required_col_types} specification.
+A \code{data.frame} of the same type as \code{df}, where column types
+have been converted to match the \code{required_types} specification.
 }
 \description{
-This function is meant to check a table's format against custom
-specifications and change the types of its columns as desired. A mismatch
-between expectations and the input table will result in an error.
+This function converts a dataframe's columns to character, checks them
+against custom specifications and then changes their types as desired. Any
+mismatch between specifications and the input table will result in an error.
 }
 \examples{
 library("tibble")
@@ -76,12 +50,14 @@ library("readr")
 library("magrittr")
 input <- tibble(x = c("A_B", "C_D"), y = c("1", "2"))
 expected <- tibble(x = c("A_B", "C_D"), y = as.integer(c(1, 2)))
+# It is not an error to require a pattern or a type for a column that is
+# absent from the input table, e.g. "z"
 output <-
     input \%>\%
     parse_table(
-        required_col_names = c("x", "y"),
-        required_col_patterns = c(x = "[A-Z]_[A-Z]"),
-        required_col_types = cols(y = "i", .default = "c")
+        required_names = c("y"),
+        required_patterns = c(x = "_", z = "^[1-5]$"),
+        required_types = cols(y = "i", z = "i")
     )
 stopifnot(identical(output, expected))
 
