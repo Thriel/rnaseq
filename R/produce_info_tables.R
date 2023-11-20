@@ -54,9 +54,14 @@ produce_info_tables <-
             table_from_file(delim = ",") %>%
             parse_table(
                 required_names = c(
-                    "id_de", "group", "contrast_1", "contrast_2"
+                    "id_de", "group", "contrast_1", "contrast_2", "formula"
                 ),
-                required_types = cols(id_de = "c", .default = "c")
+                required_patterns = c(
+                    id_de = "^[:alpha:][[:alnum:]_]*$",
+                    group = "^[:alpha:][[:alnum:]_]*$",
+                    formula = "^~"
+                ),
+                required_types = cols(filter = "d", .default = "c")
             )
         meta <-
             metadata_infos %>%
@@ -151,6 +156,13 @@ produce_info_tables <-
 #' @importFrom readxl excel_format
 #' @importFrom readxl read_excel
 #' @importFrom readr read_delim
+#' @importFrom checkmate makeAssertCollection
+#' @importFrom checkmate reportAssertions
+#' @importFrom checkmate assert
+#' @importFrom checkmate assert_character
+#' @importFrom checkmate check_character
+#' @importFrom checkmate check_count
+#' @importFrom checkmate check_null
 #'
 #' @export
 table_from_file <- function(path,
@@ -158,37 +170,47 @@ table_from_file <- function(path,
                             sheet = NULL,
                             range = NULL
                             ) {
-    if (is.character(path) && length(path) == 1) {
-        if (!file.exists(path)) {
-            stop(
-                "No file at path ",
-                path,
-                " from current directory ",
-                getwd()
-            )
-        }
+    # Check arguments
+    errors <- makeAssertCollection()
+    assert_character(path, len = 1, add = errors)
+    assert_character(delim, len = 1, null.ok = TRUE, add = errors)
+    assert(
+        check_null(sheet),
+        check_character(sheet, len = 1),
+        check_count(sheet, positive = TRUE),
+        add = errors
+    )
+    assert_character(range, len = 1, null.ok = TRUE, add = errors)
+    reportAssertions(errors)
 
-        if (is.na(excel_format(path))) {
-            tryCatch(
-                table <- read_delim(
-                    path,
-                    delim,
-                    col_types = cols(.default = "c"),
-                    na = character()
-                ),
-                error = \(e) stop("While reading text file ", path, ":\n\t", e)
-            )
-        } else {
-            tryCatch(
-                table <- read_excel(
-                    path, sheet, range, col_types = "text", na = character()
-                ),
-                error = \(e) stop("While reading Excel file ", path, ":\n\t", e)
-            )
-        }
-    } else {
-        stop("path must be a character vector of length one")
+    if (!file.exists(path)) {
+        stop(
+            "No file at path ",
+            path,
+            " from current directory ",
+            getwd()
+        )
     }
+
+    if (is.na(excel_format(path))) {
+        tryCatch(
+            table <- read_delim(
+                path,
+                delim,
+                col_types = cols(.default = "c"),
+                na = character()
+            ),
+            error = \(e) stop("While reading text file ", path, ":\n\t", e)
+        )
+    } else {
+        tryCatch(
+            table <- read_excel(
+                path, sheet, range, col_types = "text", na = character()
+            ),
+            error = \(e) stop("While reading Excel file ", path, ":\n\t", e)
+        )
+    }
+
     return(table)
 }
 
@@ -242,51 +264,56 @@ table_from_file <- function(path,
 #' @importFrom readr cols
 #' @importFrom readr type_convert
 #' @importFrom stringr str_detect
+#' @importFrom checkmate makeAssertCollection
+#' @importFrom checkmate reportAssertions
+#' @importFrom checkmate assert_character
+#' @importFrom checkmate check_class
 #'
 #' @export
 parse_table <- function(df,
                         required_names = NULL,
                         required_patterns = NULL,
                         required_types = cols()) {
+    errors <- makeAssertCollection()
+
     # Check required_names
-    if (!class(required_names) %in% c("NULL", "character")) {
-        stop("required_names must be a character vector.")
-    }
+    assert_character(required_names, null.ok = TRUE, add = errors)
 
     # Check required_patterns
     if (is.null(required_patterns)) {
         patterns <- NULL
     } else {
-        if (!is.character(required_patterns)) {
-            stop("required_patterns must be a character vector.")
-        }
+        assert_character(required_patterns, add = errors)
         if (is.null(names(required_patterns))) {
             if (length(required_patterns) != length(required_names)) {
-                stop(
+                errors$push(
                     paste0(
                         "If required_patterns is not a named vector, ",
                         "it must have the same length as required_names"
                     )
                 )
+            } else {
+                patterns <-
+                    setNames(required_patterns, required_names)
             }
-            patterns <-
-                setNames(required_patterns, required_names)
         } else {
             patterns <- required_patterns
         }
     }
 
     # Check required_types
-    if (!is.null(required_types)) {
-        if (!is(required_types, "col_spec")) {
-            stop("required_types must be a cols() specification.")
-        }
+    if (!check_class(required_types, "col_spec", null.ok = TRUE)) {
+        errors$push("required_types must be a cols() specification.")
     }
+
+    reportAssertions(errors)
+
+    errors <- makeAssertCollection()
 
     # Check that no required column name is missing
     missing_col_names <- setdiff(required_names, colnames(df))
     if (length(missing_col_names) > 0) {
-        stop(
+        errors$push(
             paste0(
                 "The following required column names are missing from the table: ",
                 paste(missing_col_names, collapse = ", ")
@@ -299,17 +326,17 @@ parse_table <- function(df,
         values <- df[[col_name]]
         pattern <- patterns[col_name]
         matches <- str_detect(values, pattern)
-        bad_values <- values[!matches]
+        bad_values <- unique(values[!matches])
         if (length(bad_values) > 0) {
-            stop(
+            errors$push(
                 paste0(
-                    "Some values in column ",
+                    "Some values in column '",
                     col_name,
-                    " (e.g. ",
+                    "' (e.g. ",
                     paste(head(bad_values, 3), collapse = ", "),
-                    ") do not match pattern \"",
+                    ") do not match pattern '",
                     pattern,
-                    "\""
+                    "'"
                 )
             )
         }
@@ -324,12 +351,12 @@ parse_table <- function(df,
             expected_type <- class(
                 type_convert(x, required_types)[[col_name]]
             )
-            stop(paste0(
-                "Could not convert column ",
+            errors$push(paste0(
+                "Could not convert column '",
                 col_name,
-                " to type ",
+                "' to type '",
                 expected_type,
-                ":\n\t",
+                "':\n\t",
                 e
             ))
         }
@@ -341,6 +368,8 @@ parse_table <- function(df,
             warning = error_func
         )
     }
+
+    reportAssertions(errors)
 
     return(new_df)
 }
