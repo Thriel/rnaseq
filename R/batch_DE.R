@@ -64,7 +64,7 @@
 #'
 #' @export
 batch_de <- function(de_infos, txi, design, outdir = NULL, r_objects = NULL,
-                     force = FALSE, cores = 1) {
+                     force = FALSE, cores = 1, return_normalized_counts = FALSE) {
 
     # 1. Data validation
     ## de_infos
@@ -136,6 +136,7 @@ batch_de <- function(de_infos, txi, design, outdir = NULL, r_objects = NULL,
         }
         res_de <- produce_single_de_batch(de_infos[i,,drop=FALSE],
                                           txi, design, dds, de)
+        
         if (!is.null(outdir)) {
             output_csv <- paste0(outdir, "/", current_id, ".csv")
             if (!file.exists(output_csv) | force) {
@@ -176,7 +177,7 @@ batch_de <- function(de_infos, txi, design, outdir = NULL, r_objects = NULL,
                 saveRDS(res_de$de, output_rds_de)
             }
         }
-        res[[current_id]] <- res_de$de
+              res[[current_id]] <- res_de$de
     }
     de_list <- parallel::mclapply(1:nrow(de_infos), de_analysis, mc.cores = cores)
     names(de_list) <- de_infos$id_de
@@ -273,9 +274,8 @@ validate_de_infos <- function(de_infos, design, txi) {
     errors
 }
 
-produce_single_de_batch <- function(current_de_info, txi, design, dds, de) {
+produce_single_de_batch <- function(current_de_info, txi, design, dds, de, return_normalized_counts = FALSE) {
     cdi <- current_de_info
-
     cd <- design[[cdi$group]]
     current_contrasts <- c(cdi$contrast_1, cdi$contrast_2)
     current_samples <- design$sample[cd %in% current_contrasts]
@@ -311,6 +311,6 @@ produce_single_de_batch <- function(current_de_info, txi, design, dds, de) {
         contrast <- c(cdi$group, cdi$contrast_1, cdi$contrast_2)
         de <- format_de_results(dds, txi, contrast)
     }
-
-    list(dds = dds, de = de)
+   normalized_counts <- counts(dds, normalized = TRUE)
+   return(list(dds = dds, de = de, normalized_counts = normalized_counts))  
 }
