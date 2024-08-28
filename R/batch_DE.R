@@ -140,31 +140,39 @@ batch_de <- function(de_infos, txi, design, outdir = NULL, r_objects = NULL,
         if (!is.null(outdir)) {
             output_csv <- paste0(outdir, "/", current_id, ".csv")
             if (!file.exists(output_csv) | force) {
-                tmp <- res_de$de %>%
-                    as.data.frame
-
-                # replace qV and pV by padj and pvalue
-                i <- stringr::str_detect(colnames(tmp), "qV")
-                stopifnot(sum(i) %in% c(0,1))
-                if (sum(i) == 1) {
-                    colnames(tmp)[i] <- "padj"
-                }
-                i <- stringr::str_detect(colnames(tmp), "pV")
-                stopifnot(sum(i) %in% c(0,1))
-                if (sum(i) == 1) {
-                    colnames(tmp)[i] <- "pvalue"
-                }
-                #### TODO: verify ahead
+              tmp <- res_de$de %>% as.data.frame()
+              
+              # replace qV and pV by padj and pvalue
+              i <- stringr::str_detect(colnames(tmp), "qV")
+              stopifnot(sum(i) %in% c(0,1))
+              if (sum(i) == 1) {
+                colnames(tmp)[i] <- "padj"
+              }
+              i <- stringr::str_detect(colnames(tmp), "pV")
+              stopifnot(sum(i) %in% c(0,1))
+              if (sum(i) == 1) {
+                colnames(tmp)[i] <- "pvalue"
+              }
+              
+              # Ajouter les comptages normalisés si demandé
+              if (return_normalized_counts) {
+                normalized_counts <- counts(res_de$dds, normalized = TRUE)
+                norm_counts_df <- as.data.frame(normalized_counts)
+                
+                # Assurez-vous que tmp a une colonne id
                 if(!("id" %in% colnames(tmp))){
-                    tmp <- tmp %>% tibble::rownames_to_column("id") %>%
-                        dplyr::full_join(txi$anno, by = "id") %>%
-                        dplyr::select(id, ensembl_gene:transcript_type, dplyr::everything())
-                        readr::write_csv(output_csv)
-                } else {
-                    # already left joined with anno
-                    tmp %>% readr::write_csv(output_csv)
+                  tmp <- tmp %>% tibble::rownames_to_column("id")
                 }
-#                readr::write_csv(res_de$de, output_csv)
+                norm_counts_df$id <- rownames(norm_counts_df)
+                
+                # Fusionner tmp et norm_counts_df
+                combined_results <- dplyr::full_join(tmp, norm_counts_df, by = "id")
+              } else {
+                combined_results <- tmp
+              }
+              
+              # Écrire le fichier CSV combiné
+              readr::write_csv(combined_results, output_csv)
             }
         }
         if (!is.null(r_objects)) {
