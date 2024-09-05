@@ -48,7 +48,7 @@ produce_pca_df <- function(txi, use_normalisation = "none", min_counts = 5,
 
     validate_txi(txi)
     stopifnot(use_normalisation %in% c("none", "ruvg", "combat"))
-    id_metadata <- validate_metadata(metadata, id_metadata, txi)
+    #id_metadata <- validate_metadata(metadata, id_metadata, txi)
     stopifnot(is(ncp, "numeric"))
     stopifnot(identical(ncp, round(ncp)))
     stopifnot(ncp > 1)
@@ -179,8 +179,9 @@ validate_metadata <- function(metadata, id_metadata, txi) {
 plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
                      show_names = TRUE, title = NULL, graph = TRUE,
                      legend.position = "right",
-                     legend.box = "vertical") {
-
+                     legend.box = "vertical", show_ellipse = TRUE) {
+    
+    print("ON en est la")
     # Validate the params
     stopifnot(is(res_pca, "list"))
     stopifnot(all(c("coord", "xlab", "ylab") %in% names(res_pca)))
@@ -194,15 +195,16 @@ plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
     stopifnot(is(size, "numeric"))
     stopifnot(identical(size, round(size)))
     stopifnot(size > 0)
+    print("ON en est la again")
 
-    if (!is.null(color)) {
-        stopifnot(is(color, "character"))
-        stopifnot(color %in% colnames(res_pca$coord))
-    }
-    if (!is.null(shape)) {
-        stopifnot(is(shape, "character"))
-        stopifnot(shape %in% colnames(res_pca$coord))
-    }
+    #if (!is.null(color)) {
+        #stopifnot(is(color, "character"))
+        #stopifnot(color %in% colnames(res_pca$coord))
+    #}
+    #if (!is.null(shape)) {
+        #stopifnot(is(shape, "character"))
+        #stopifnot(shape %in% colnames(res_pca$coord))
+    #}
     stopifnot(is(show_names, "logical"))
     if (!is.null(title)) {
         stopifnot(is(title, "character"))
@@ -236,6 +238,13 @@ plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
     } else {
         gg <- gg + ggplot2::geom_point(size = size)
     }
+    
+    # Ajouter les ellipses par groupe si demandé
+    if (show_ellipse) {
+      gg <- gg + ggplot2::stat_ellipse(ggplot2::aes_string(col = color, group = color), 
+                                       level = 0.95, linetype = "dashed")
+    }
+  
 
     # legend
     if (!is.null(color) | !is.null(shape)) {
