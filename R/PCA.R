@@ -78,7 +78,10 @@ produce_pca_df <- function(txi, use_normalisation = "none", min_counts = 5,
 
     tpm <- tpm %>%
             dplyr::mutate(ensembl_gene = rownames(tpm)) %>%
-            tidyr::gather(sample, tpm, -ensembl_gene)
+            tidyr::gather(sample, tpm, -ensembl_gene)%>%
+            dplyr::left_join(metadata %>% select(id, group), by = c("sample" = "id")) %>%
+            dplyr::filter(group != "unassigned group") %>%
+            dplyr::select(-group)
 
     min_tpm <- dplyr::group_by(tpm, ensembl_gene) %>%
         dplyr::summarize(tpm = sum(tpm)) %>%
@@ -110,7 +113,7 @@ produce_pca_df <- function(txi, use_normalisation = "none", min_counts = 5,
         if (is.null(id_metadata)) {
             id_metadata <- colnames(metadata)[1]
         }
-        df <- left_join(df, metadata, by = c("sample" = id_metadata))
+        df <- left_join(df, metadata, by = c("sample" = "id"))
     }
 
     xlab <- paste0("Dim1 (", pca$eig[1,2] %>% round(2), "%)")
@@ -181,7 +184,6 @@ plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
                      legend.position = "right",
                      legend.box = "vertical", show_ellipse = TRUE) {
     
-    print("ON en est la")
     # Validate the params
     stopifnot(is(res_pca, "list"))
     stopifnot(all(c("coord", "xlab", "ylab") %in% names(res_pca)))
@@ -195,7 +197,6 @@ plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
     stopifnot(is(size, "numeric"))
     stopifnot(identical(size, round(size)))
     stopifnot(size > 0)
-    print("ON en est la again")
 
     #if (!is.null(color)) {
         #stopifnot(is(color, "character"))
@@ -242,7 +243,7 @@ plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
     # Ajouter les ellipses par groupe si demandé
     if (show_ellipse) {
       gg <- gg + ggplot2::stat_ellipse(ggplot2::aes_string(col = color, group = color), 
-                                       level = 0.95, linetype = "dashed")
+                                       level = 0.95, linetype = "solid")
     }
   
 
