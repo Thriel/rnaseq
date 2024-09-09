@@ -44,11 +44,11 @@
 #' @export
 
 produce_pca_df <- function(txi, use_normalisation = "none", min_counts = 5,
-                           metadata = NULL, id_metadata = NULL, ncp = 2) {
+                           metadata = NULL, id_metadata = NULL, ncp = 2, first_analysis = FALSE) {
 
     validate_txi(txi)
     stopifnot(use_normalisation %in% c("none", "ruvg", "combat"))
-    #id_metadata <- validate_metadata(metadata, id_metadata, txi)
+    id_metadata <- validate_metadata(metadata, id_metadata, txi)
     stopifnot(is(ncp, "numeric"))
     stopifnot(identical(ncp, round(ncp)))
     stopifnot(ncp > 1)
@@ -75,14 +75,21 @@ produce_pca_df <- function(txi, use_normalisation = "none", min_counts = 5,
             stopifnot("combat_counts" %in% txi$dummy)
         }
     }
-
-    tpm <- tpm %>%
+    print(first_analysis)
+    
+    
+    if (first_analysis == FALSE) {
+        tpm <- tpm %>%
             dplyr::mutate(ensembl_gene = rownames(tpm)) %>%
-            tidyr::gather(sample, tpm, -ensembl_gene)%>%
+            tidyr::gather(sample, tpm, -ensembl_gene)
+    } else if (first_analysis == TRUE) {
+        tpm <- tpm %>%
+            dplyr::mutate(ensembl_gene = rownames(tpm)) %>%
+            tidyr::gather(sample, tpm, -ensembl_gene) %>%
             dplyr::left_join(metadata %>% select(id, group), by = c("sample" = "id")) %>%
             dplyr::filter(group != "unassigned group") %>%
             dplyr::select(-group)
-
+    }
     min_tpm <- dplyr::group_by(tpm, ensembl_gene) %>%
         dplyr::summarize(tpm = sum(tpm)) %>%
         dplyr::filter(tpm >= min_counts) %>%
@@ -113,7 +120,11 @@ produce_pca_df <- function(txi, use_normalisation = "none", min_counts = 5,
         if (is.null(id_metadata)) {
             id_metadata <- colnames(metadata)[1]
         }
-        df <- left_join(df, metadata, by = c("sample" = "id"))
+      if (first_analysis == FALSE) {
+        df <- left_join(df, metadata, by = c("sample" = "id_metadata"))
+      } else if (first_analysis == TRUE) {
+          df <- left_join(df, metadata, by = c("sample" = "id"))
+      }
     }
 
     xlab <- paste0("Dim1 (", pca$eig[1,2] %>% round(2), "%)")
@@ -182,7 +193,7 @@ validate_metadata <- function(metadata, id_metadata, txi) {
 plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
                      show_names = TRUE, title = NULL, graph = TRUE,
                      legend.position = "right",
-                     legend.box = "vertical", show_ellipse = TRUE) {
+                     legend.box = "vertical", show_ellipse = FALSE ) {
     
     # Validate the params
     stopifnot(is(res_pca, "list"))
@@ -197,15 +208,16 @@ plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
     stopifnot(is(size, "numeric"))
     stopifnot(identical(size, round(size)))
     stopifnot(size > 0)
-
-    #if (!is.null(color)) {
-        #stopifnot(is(color, "character"))
-        #stopifnot(color %in% colnames(res_pca$coord))
-    #}
-    #if (!is.null(shape)) {
-        #stopifnot(is(shape, "character"))
-        #stopifnot(shape %in% colnames(res_pca$coord))
-    #}
+    if (!is.null(color)) {
+        stopifnot(is(color, "character"))
+        stopifnot(color %in% colnames(res_pca$coord))
+    }
+    if (!is.null(shape)) {
+        stopifnot(is(shape, "character"))
+        stopifnot(shape %in% colnames(res_pca$coord))
+    }
+    print("ici les histoire de couleur etc")
+    
     stopifnot(is(show_names, "logical"))
     if (!is.null(title)) {
         stopifnot(is(title, "character"))
@@ -245,6 +257,7 @@ plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
       gg <- gg + ggplot2::stat_ellipse(ggplot2::aes_string(col = color, group = color), 
                                        level = 0.95, linetype = "solid")
     }
+
   
 
     # legend

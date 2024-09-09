@@ -123,10 +123,11 @@ batch_pca <- function(pca_infos, txi, metadata = NULL, outdir = NULL,
     stopifnot(length(validate_pca_infos(pca_infos, metadata, txi)) == 0)
 
     # Produce the pca
+    
+    print("Starting PCA")
     min_pca_infos <- dplyr::select(pca_infos, group, group_val, id_metadata,
                                    use_normalisation, min_counts) %>%
                          unique
-
     create_pca_df <- function(i) {
         cg <- min_pca_infos$group[i]
         cgv <- min_pca_infos$group_val[i]
@@ -145,7 +146,6 @@ batch_pca <- function(pca_infos, txi, metadata = NULL, outdir = NULL,
         current_dir <- paste0(cg, "/", cgv)
         current_prefix <- paste(cim, cun, cmc, sep = "_")
         pca_df[[cg]][[cgv]][[current_prefix]] <- list()
-
         current_pca_df <- NULL
         if (!is.null(r_objects)) {
             current_rds <- paste0(r_objects, "/min_pca_infos/", current_dir, "/",
@@ -171,7 +171,6 @@ batch_pca <- function(pca_infos, txi, metadata = NULL, outdir = NULL,
     pca_df <- parallel::mclapply(1:nrow(min_pca_infos), create_pca_df,
                                  mc.cores = cores) %>%
         merge_pca_lists
-
     pca_list <- list()
     for (i in 1:nrow(pca_infos)) {
         current_id <- pca_infos$id_plot[i]
@@ -457,10 +456,11 @@ validate_pca_infos <- function(pca_infos, metadata, txi) {
 
 produce_single_pca_df <- function(current_pca_info, txi, metadata) {
     cpi <- current_pca_info
-
+    
     use_normalisation <- cpi$use_normalisation
-
+      
     if (!is.null(metadata)) {
+
         id_metadata <- validate_metadata(metadata, cpi$id_metadata, txi)
         if ("group" %in% colnames(cpi) & !is.na(cpi$group)) {
             i <- metadata[[cpi$group]] == cpi$group_val
@@ -469,14 +469,15 @@ produce_single_pca_df <- function(current_pca_info, txi, metadata) {
             txi <- filter_txi(txi, current_samples)
         }
     }
-
     res_pca <- produce_pca_df(txi = txi,
                               use_normalisation = use_normalisation,
                               min_counts = cpi$min_counts,
                               ncp = 2)
-
-    if (!is.null(metadata)) {
+    if (!is.null(metadata)){
+      
+      
         res_pca$coord <- dplyr::left_join(res_pca$coord, metadata, by = c("sample" = id_metadata))
+
     }
     res_pca
 }
