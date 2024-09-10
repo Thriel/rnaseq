@@ -167,6 +167,18 @@ batch_de <- function(de_infos, txi, design, outdir = NULL, r_objects = NULL,
                 
                 # Fusionner tmp et norm_counts_df
                 combined_results <- dplyr::full_join(tmp, norm_counts_df, by = "id")
+              
+                # Réorganiser les colonnes par groupe
+                sample_data <- colData(res_de$dds)
+                group_order <- order(sample_data$group)
+                sample_columns <- colnames(norm_counts_df)[colnames(norm_counts_df) != "id"]
+                reordered_sample_columns <- sample_columns[group_order]
+                
+                # Créer le nouvel ordre des colonnes
+                new_column_order <- c("id", colnames(tmp)[colnames(tmp) != "id"], reordered_sample_columns)
+                
+                # Réorganiser les colonnes
+                combined_results <- combined_results[, new_column_order]
               } else {
                 combined_results <- tmp
               }
