@@ -101,43 +101,44 @@ deseq2_analysis <- function(txi, design, formula, filter = 2,
 #' @export
 split_de_results <- function(de_res, p_threshold = 0.05, fc_threshold = 1.5,
                              tpm_threshold = NULL) {
+    print(colnames(de_res))
     stopifnot(is(de_res, "data.frame"))
-    expected_cols <- c("qV", "fold_change", "mean_TPM_grp1", "mean_TPM_grp2")
+    expected_cols <- c("padj", "log2FoldChange")
+    print(expected_cols)
     stopifnot(all(expected_cols %in% colnames(de_res)))
     stopifnot(is(p_threshold, "numeric"))
     stopifnot(p_threshold >= 0 & p_threshold <= 1)
     stopifnot(is(fc_threshold, "numeric"))
     stopifnot(fc_threshold >= 0)
     if (!is.null(tpm_threshold)) {
-        stopifnot(is(tpm_threshold, "numeric"))
-        stopifnot(tpm_threshold >= 0)
-    }
-
-    idx_p <- de_res$qV <= p_threshold
-    idx_fc <- abs(de_res$fold_change) >= fc_threshold
+      stopifnot(is(tpm_threshold, "numeric"))
+      stopifnot(tpm_threshold >= 0)
+      }
+    
+    idx_p <- de_res$padj <= p_threshold
+    idx_fc <- abs(de_res$log2FoldChange) >= fc_threshold
     de_res$p_threshold <- FALSE
     de_res$p_threshold[idx_p] <- TRUE
     de_res$fc_threshold <- FALSE
     de_res$fc_threshold[idx_fc] <- TRUE
-
+    
     if (!is.null(tpm_threshold)) {
-        mean_tpm_1 <- de_res$mean_TPM_grp1
-        mean_tpm_2 <- de_res$mean_TPM_grp2
-        idx_tpm <- mean(mean_tpm_1, mean_tpm_2) >= tpm_threshold
-        de_res$tpm_threshold <- FALSE
-        de_res$tpm_threshold[idx_tpm] <- TRUE
-        signif <- dplyr::filter(de_res, p_threshold, fc_threshold,
-                                tpm_threshold)
+      mean_tpm_1 <- de_res$mean_TPM_grp1
+      mean_tpm_2 <- de_res$mean_TPM_grp2
+      idx_tpm <- mean(mean_tpm_1, mean_tpm_2) >= tpm_threshold
+      de_res$tpm_threshold <- FALSE
+      de_res$tpm_threshold[idx_tpm] <- TRUE
+      signif <- dplyr::filter(de_res, p_threshold, fc_threshold,
+                              tpm_threshold)
     } else {
-        signif <- dplyr::filter(de_res, p_threshold, fc_threshold)
+      signif <- dplyr::filter(de_res, p_threshold, fc_threshold)
     }
-
-    up <- dplyr::filter(signif, fold_change > 0)
-    down <- dplyr::filter(signif, fold_change < 0)
-
+    
+    up <- dplyr::filter(signif, log2FoldChange > 0)
+    down <- dplyr::filter(signif, log2FoldChange < 0)
+    
     list(de_res = de_res, signif = signif, up = up, down = down)
 }
-
 #' Minimal formatting of de results
 #'
 #' This function will call DESeq2::results on the dds object and add the

@@ -139,7 +139,7 @@ batch_volcano <- function(volcano_infos, de_results, add_labels = NULL,
             current_infos <- volcano_infos[i,,drop=FALSE]
             current_volcano <- produce_single_volcano_batch(current_infos,
                                                             de_results,
-                                                            add_labels)
+                                                            add_labels, outdir)
         }
         if (!is.null(outdir)) {
             if (!file.exists(output_pdf) | force) {
@@ -323,9 +323,10 @@ validate_volcano_infos <- function(volcano_infos, design, txi) {
     errors
 }
 
-produce_single_volcano_batch <- function(current_volcano_info, de_results, add_labels) {
+produce_single_volcano_batch <- function(current_volcano_info, de_results, add_labels, outdir) {
     cvi <- current_volcano_info
     de_res <- de_results[[cvi$id_de]]
+    print(de_res)
 
     # TODO: add_labels
     produce_volcano(de_res,
@@ -339,7 +340,8 @@ produce_single_volcano_batch <- function(current_volcano_info, de_results, add_l
                     col_down = cvi$col_down,
                     size = cvi$size,
                     title = cvi$title,
-                    graph = FALSE)
+                    graph = FALSE,
+                    outdir = outdir)
 
     #add faceting, modify
 

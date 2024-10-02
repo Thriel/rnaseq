@@ -53,12 +53,13 @@
 #' @importFrom stringr str_detect
 #'
 #' @export
-produce_volcano <- function(de_res, fc_threshold = 3, p_threshold = 0.05,
+    produce_volcano <- function(de_res, fc_threshold = 3, p_threshold = 0.05,
                             y_axis = "padj", show_signif_counts = TRUE,
                             show_signif_lines = "vertical",
                             show_signif_color = TRUE, col_up = "#E73426",
                             col_down = "#0020F5", size = 3, graph = TRUE,
-                            title = NA) {
+                            title = NA, outdir = NULL) {
+    print(de_res)
     stopifnot(is.numeric(fc_threshold))
     stopifnot(fc_threshold > 0)
     stopifnot(is.numeric(p_threshold))
@@ -188,10 +189,23 @@ produce_volcano <- function(de_res, fc_threshold = 3, p_threshold = 0.05,
     if (isTRUE(graph)) {
         print(p)
     }
-    invisible(list(p = p, df = de_res))
+    significant_genes_up <- de_res %>%
+      dplyr::filter(abs(log2FoldChange) >= log2(fc_threshold) & y_axis <= p_threshold)
+    
+    significant_genes_down <- de_res %>%
+      dplyr::filter(abs(log2FoldChange) <= log2(fc_threshold) & y_axis <= p_threshold)
+    
+    if (!is.null(outdir)) {
+      readr::write_csv(significant_genes_up, file.path(outdir, paste0(title, "_up_volcano_significant.csv")))
+      readr::write_csv(significant_genes_down, file.path(outdir, paste0(title, "_down_volcano_significant.csv")))
+    }
+    
+    invisible(list(p = p, df = de_res, significant_up = significant_genes_up, significant_down = significant_genes_down))
 }
 
+    
 is_color <- function(x) {
     res <- try(col2rgb(x),silent=TRUE)
     return(!"try-error"%in%class(res))
 }
+    

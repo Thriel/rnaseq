@@ -75,8 +75,7 @@ produce_pca_df <- function(txi, use_normalisation = "none", min_counts = 5,
             stopifnot("combat_counts" %in% txi$dummy)
         }
     }
-    print(first_analysis)
-    
+
     
     if (first_analysis == FALSE) {
         tpm <- tpm %>%
@@ -216,8 +215,7 @@ plot_pca <- function(res_pca, size = 3, color = NULL, shape = NULL,
         stopifnot(is(shape, "character"))
         stopifnot(shape %in% colnames(res_pca$coord))
     }
-    print("ici les histoire de couleur etc")
-    
+
     stopifnot(is(show_names, "logical"))
     if (!is.null(title)) {
         stopifnot(is(title, "character"))
