@@ -189,18 +189,7 @@
     if (isTRUE(graph)) {
         print(p)
     }
-    significant_genes_up <- de_res %>%
-      dplyr::filter(abs(log2FoldChange) >= log2(fc_threshold) & y_axis <= p_threshold)
-    
-    significant_genes_down <- de_res %>%
-      dplyr::filter(abs(log2FoldChange) <= log2(fc_threshold) & y_axis <= p_threshold)
-    
-    if (!is.null(outdir)) {
-      readr::write_csv(significant_genes_up, file.path(outdir, paste0(title, "_up_volcano_significant.csv")))
-      readr::write_csv(significant_genes_down, file.path(outdir, paste0(title, "_down_volcano_significant.csv")))
-    }
-    
-    invisible(list(p = p, df = de_res, significant_up = significant_genes_up, significant_down = significant_genes_down))
+    invisible(list(p = p, df = de_res))
 }
 
     

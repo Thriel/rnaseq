@@ -116,7 +116,7 @@ split_de_results <- function(de_res, p_threshold = 0.05, fc_threshold = 1.5,
       }
     
     idx_p <- de_res$padj <= p_threshold
-    idx_fc <- abs(de_res$log2FoldChange) >= fc_threshold
+    idx_fc <- abs(de_res$log2FoldChange) >= log2(fc_threshold)
     de_res$p_threshold <- FALSE
     de_res$p_threshold[idx_p] <- TRUE
     de_res$fc_threshold <- FALSE
