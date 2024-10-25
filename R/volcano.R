@@ -59,7 +59,6 @@
                             show_signif_color = TRUE, col_up = "#E73426",
                             col_down = "#0020F5", size = 3, graph = TRUE,
                             title = NA, outdir = NULL) {
-    print(de_res)
     stopifnot(is.numeric(fc_threshold))
     stopifnot(fc_threshold > 0)
     stopifnot(is.numeric(p_threshold))

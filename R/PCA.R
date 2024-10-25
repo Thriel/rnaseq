@@ -120,7 +120,7 @@ produce_pca_df <- function(txi, use_normalisation = "none", min_counts = 5,
             id_metadata <- colnames(metadata)[1]
         }
       if (first_analysis == FALSE) {
-        df <- left_join(df, metadata, by = c("sample" = "id_metadata"))
+        df <- left_join(df, metadata, by = c("sample" = id_metadata))
       } else if (first_analysis == TRUE) {
           df <- left_join(df, metadata, by = c("sample" = "id"))
       }
